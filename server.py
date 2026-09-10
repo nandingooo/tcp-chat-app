@@ -1,104 +1,48 @@
-v# server.py
 import socket
 
 
 class ChatServer:
-    """A simple TCP chat server that talks to a single client."""
+    """A simple TCP chat server that communicates with one client."""
 
     def __init__(self, host="127.0.0.1", port=65432, buffer_size=1024):
         self.host = host
         self.port = port
         self.buffer_size = buffer_size
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def start(self):
-        """Bind, listen, and accept a single client connection."""
-        with self.sock as s:
-            s.bind((self.host, self.port))
-            s.listen()
-            print(f"Server started on {self.host}:{self.port}...")
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind((self.host, self.port))
+            sock.listen()
+            print(f"Server listening on {self.host}:{self.port}")
 
-            conn, addr = s.accept()
+            conn, addr = sock.accept()
             with conn:
                 print(f"Connected by {addr}")
                 self._handle_conversation(conn)
 
     def _handle_conversation(self, conn):
-        """Run the receive/send loop for one connected client."""
         while True:
-            data = self._receive(conn)
-            if data is None or data.lower() == "exit":
+            message = self._receive(conn)
+            if message is None or message.lower() == "exit":
                 print("Client disconnected.")
-                break
-            print(f"Client: {data}")
+                return
 
-            message = input("You: ")
-            self._send(conn, message)
-            if message.lower() == "exit":
+            print(f"Client: {message}")
+            response = input("You: ")
+            self._send(conn, response)
+
+            if response.lower() == "exit":
                 print("Server closing connection.")
-                break
+                return
 
     def _receive(self, conn):
         data = conn.recv(self.buffer_size)
-        if not data:
-            return None
-        return data.decode()
+        return None if not data else data.decode("utf-8")
 
-    def _send(self, conn, message):
-        conn.sendall(message.encode())
-
-
-if __name__ == "__main__":
-    ChatServer().start()
-EO
-# server.py
-import socket
-
-
-class ChatServer:
-    """A simple TCP chat server that talks to a single client."""
-
-    def __init__(self, host="127.0.0.1", port=65432, buffer_size=1024):
-        self.host = host
-        self.port = port
-        self.buffer_size = buffer_size
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    def start(self):
-        """Bind, listen, and accept a single client connection."""
-        with self.sock as s:
-            s.bind((self.host, self.port))
-            s.listen()
-            print(f"Server started on {self.host}:{self.port}...")
-
-            conn, addr = s.accept()
-            with conn:
-                print(f"Connected by {addr}")
-                self._handle_conversation(conn)
-
-    def _handle_conversation(self, conn):
-        """Run the receive/send loop for one connected client."""
-        while True:
-            data = self._receive(conn)
-            if data is None or data.lower() == "exit":
-                print("Client disconnected.")
-                break
-            print(f"Client: {data}")
-
-            message = input("You: ")
-            self._send(conn, message)
-            if message.lower() == "exit":
-                print("Server closing connection.")
-                break
-
-    def _receive(self, conn):
-        data = conn.recv(self.buffer_size)
-        if not data:
-            return None
-        return data.decode()
-
-    def _send(self, conn, message):
-        conn.sendall(message.encode())
+    @staticmethod
+    def _send(conn, message):
+        conn.sendall(message.encode("utf-8"))
 
 
 if __name__ == "__main__":
